@@ -1,0 +1,71 @@
+pipeline {
+	agent any
+	options {
+        timeout(time: 1, unit: 'HOURS') 
+    }
+	environment {
+        APP = 'mtcomm'
+    }
+	
+	stages {
+		stage('copy'){
+			steps{
+				sh "rm -rf /home/go/src/${env.JOB_NAME}"
+				sh "cp -R ${JENKINS_HOME}/workspace/${env.JOB_NAME} /home/go/src/"
+				
+				sh "go install mtcomm/caller/grpc"
+				
+				sh "go install mtcomm/caller/http"
+				
+				sh "go install mtcomm/caller/http3part"
+				
+				sh "go install mtcomm/caller/httpgateway"
+				
+				sh "go install mtcomm/common"
+				
+				sh "go install mtcomm/db/mysql"
+				
+				sh "go install mtcomm/db/redis"
+				
+				sh "go install mtcomm/error"
+				
+				sh "go install mtcomm/k8s"
+				
+				sh "go install mtcomm/log"
+				
+				sh "go install mtcomm/helper/health"
+				
+				sh "go install mtcomm/helper/monitor"
+				
+				sh "go install mtcomm/middleware/handler/grpcserver"
+				
+				sh "go install mtcomm/middleware/handler/httpserver"
+				
+				sh "go install mtcomm/middleware/retry"
+				
+				sh "go install mtcomm/queue/producer"
+				
+				sh "go install mtcomm/queue/producer"
+			}		
+		}
+    }
+	post {
+        always {
+            echo 'One way or another, I have finished'
+            deleteDir() /* clean up our workspace */
+        }
+        success {
+            echo 'This will run only if successful'
+        }
+        failure {
+            echo 'This will run only if failed'
+        }
+        unstable {
+            echo 'This will run only if the run was marked as unstable'
+        }
+        changed {
+            echo 'This will run only if the state of the Pipeline has changed'
+            echo 'For example, if the Pipeline was previously failing but is now successful'
+        }
+    }
+}

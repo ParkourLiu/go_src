@@ -1,0 +1,9 @@
+调用getAuthCode方法，
+传参
+	userId  string //用户ID
+	phoneNo string //电话号码
+	type    string //验证类型  0:注册；1：更改密码；2：修改绑定手机号；3：绑定紧急联系人；4：停用定位贴；5：快捷登录
+	vcode   string //验证码
+
+返回 code 100 操作成功
+

@@ -1,0 +1,4 @@
+首页 求助、公益活动广告语
+
+1求助：hash   key=helpSlogan    subKey= title,content
+2公益活动： hash   key=publicBenefitSlogan    subKey= title,content

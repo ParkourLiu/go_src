@@ -1,0 +1,526 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">idgen\instrumenting.go (100.0%)</option>
+				
+				<option value="file1">idgen\logging.go (85.7%)</option>
+				
+				<option value="file2">idgen\main.go (27.8%)</option>
+				
+				<option value="file3">idgen\service.go (88.1%)</option>
+				
+				<option value="file4">idgen\transport.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "fmt"
+        "time"
+
+        "github.com/go-kit/kit/metrics"
+)
+
+type instrumentingMiddleware struct {
+        requestCount   metrics.Counter
+        requestLatency metrics.Histogram
+        next           IdGeneraterService
+}
+
+func (mw instrumentingMiddleware) GenerateUniqueIdV1(count uint32) (ids []string, err error) <span class="cov8" title="1">{
+        defer func(begin time.Time) </span><span class="cov8" title="1">{
+                lvs := []string{"method", "GenerateUniqueIdV1", "error", fmt.Sprint(err != nil)}
+                mw.requestCount.With(lvs...).Add(1)
+                mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
+        }</span>(time.Now())
+
+        <span class="cov8" title="1">ids, err = mw.next.GenerateUniqueIdV1(count)
+        return</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package main
+
+import (
+        "time"
+)
+
+type loggingMiddleware struct {
+        next IdGeneraterService
+}
+
+func (mw loggingMiddleware) GenerateUniqueIdV1(count uint32) (ids []string, err error) <span class="cov8" title="1">{
+        log.Info(
+                "check_log", "yes",
+                "method_start", "GenerateUniqueIdV1",
+                "input", count,
+        )
+        defer func(begin time.Time) </span><span class="cov8" title="1">{
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Error(
+                                "check_log", "yes",
+                                "method_end", "GenerateUniqueIdV1",
+                                "input", count,
+                                "status", "fail",
+                                "msg", err,
+                                "took", time.Since(begin),
+                        )
+                }</span><span class="cov8" title="1"> else {
+                        log.Info(
+                                "check_log", "yes",
+                                "method_end", "GenerateUniqueIdV1",
+                                "input", count,
+                                "status", "success",
+                                "took", time.Since(begin),
+                        )
+                }</span>
+        }(time.Now())
+
+        <span class="cov8" title="1">ids, err = mw.next.GenerateUniqueIdV1(count)
+        return</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package main
+
+import (
+        "flag"
+        "net"
+        "os"
+        "strconv"
+        "strings"
+
+        logger "mtcomm/log"
+        mkgrpcserver "mtcomm/middleware/handler/grpcserver"
+
+        "golang.org/x/net/context"
+
+        "idgen/pb"
+        monitor "monitor/client"
+        "mtcomm/db/redis"
+
+        kitprometheus "github.com/go-kit/kit/metrics/prometheus"
+        grpctransport "github.com/go-kit/kit/transport/grpc"
+
+        stdopentracing "github.com/opentracing/opentracing-go"
+
+        "github.com/go-kit/kit/tracing/opentracing"
+        "github.com/go-kit/kit/tracing/zipkin"
+        zipkingo "github.com/openzipkin/zipkin-go"
+        zipkinopt "github.com/openzipkin/zipkin-go-opentracing"
+        zipkinhttp "github.com/openzipkin/zipkin-go/reporter/http"
+        stdprometheus "github.com/prometheus/client_golang/prometheus"
+        "github.com/tjz101/goprop"
+        "google.golang.org/grpc"
+)
+
+var (
+        namespace     string
+        serviceName   string
+        tracer        stdopentracing.Tracer
+        prop          *goprop.Prop
+        log           *logger.Logger
+        svc           IdGeneraterService
+        monitorClient monitor.MonitorCaller
+        redisClient   redis.RedisClient
+        seqNo         string
+)
+
+func init() <span class="cov8" title="1">{
+        /* init properties */
+        propFile := flag.String("prop", "prop.properties", "properties file")
+        flag.Parse()
+        prop = goprop.NewProp()
+        prop.Read(*propFile)
+
+        namespace = prop.Get("namespace")     //kubernetes namespace
+        serviceName = prop.Get("serviceName") //kubernetes service name
+
+        /* init log */
+        logLevel, _ := strconv.Atoi(prop.Get("log_level"))
+        logger.SetDefaultLogLevel(logLevel)
+        logger.With("serviceName", serviceName)
+        log = logger.GetDefaultLogger()
+
+        /* get client seq no */
+        hostName := os.Getenv("HOST_NAME")
+        if hostName == "" </span><span class="cov0" title="0">{
+                panic("Don't set HOST_NAME env!")</span>
+        }
+        <span class="cov8" title="1">log.Debug("hostName", hostName)
+        array := strings.Split(hostName, "-")
+        seqNo = array[len(array)-1]
+        _, err := strconv.Atoi(seqNo)
+        if err != nil </span><span class="cov0" title="0">{
+                panic("HOST_INDEX is error!")</span>
+        }
+        <span class="cov8" title="1">log.Debug("HOST_INDEX", seqNo)
+
+        /* init redis */
+        redisClient = redis.NewRedisClient(&amp;redis.RedisServerInfo{
+                Ctx:       context.TODO(),
+                Logger:    logger.GetDefaultLogger(),
+                RedisHost: prop.Get("redis_host"),
+        })
+
+        /* init monitorClient */
+        monitorClient = monitor.NewMonitorCaller(prop.Get("mq_uri"), prop.Get("mq_monitor_exchange"), prop.Get("mq_monitor_route"))</span>
+}
+
+func main() <span class="cov0" title="0">{
+        // init
+        zipkinAddr := prop.Get("zipkinAddr")
+        listenPort := prop.Get("listenPort")
+        grpcAddr := prop.Get("listenPort")
+
+        // init tracing domain.
+        </span><span class="cov0" title="0">{
+                if zipkinAddr != "" </span><span class="cov0" title="0">{
+                        logger.Info("tracer", "Zipkin", "zipkinAddr", zipkinAddr)
+                        collector, err := zipkinopt.NewHTTPCollector(zipkinAddr, zipkinopt.HTTPBatchSize(1))
+                        if err != nil </span><span class="cov0" title="0">{
+                                logger.Error("tracer", "Zipkin", "err", err)
+                                os.Exit(1)
+                        }</span>
+                        <span class="cov0" title="0">tracer, err = zipkinopt.NewTracer(
+                                zipkinopt.NewRecorder(collector, false, listenPort, serviceName),
+                        )
+                        if err != nil </span><span class="cov0" title="0">{
+                                logger.Error("tracer", "Zipkin", "err", err)
+                                os.Exit(1)
+                        }</span>
+                }<span class="cov0" title="0"> else {
+                        logger.Info("tracer", "none")
+                        tracer = stdopentracing.GlobalTracer() // no-op
+                }</span>
+        }
+
+        <span class="cov0" title="0">var zipkinTracer *zipkingo.Tracer
+        </span><span class="cov0" title="0">{
+                var (
+                        err           error
+                        useNoopTracer = (zipkinAddr == "")
+                        reporter      = zipkinhttp.NewReporter(zipkinAddr)
+                )
+                defer reporter.Close()
+                zEP, _ := zipkingo.NewEndpoint(serviceName, zipkinAddr)
+                zipkinTracer, err = zipkingo.NewTracer(
+                        reporter, zipkingo.WithLocalEndpoint(zEP), zipkingo.WithNoopTracer(useNoopTracer),
+                )
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Error("err", err)
+                        os.Exit(1)
+                }</span>
+                <span class="cov0" title="0">if !useNoopTracer </span><span class="cov0" title="0">{
+                        log.Info("tracer", "Zipkin", "type", "Native", "URL", zipkinAddr)
+                }</span>
+        }
+
+        <span class="cov0" title="0">fieldKeys := []string{"method", "error"}
+        requestCount := kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
+                Namespace: namespace,
+                Subsystem: serviceName,
+                Name:      "request_count",
+                Help:      "Number of requests received.",
+        }, fieldKeys)
+        requestLatency := kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
+                Namespace: namespace,
+                Subsystem: serviceName,
+                Name:      "request_latency_microseconds",
+                Help:      "Total duration of requests in microseconds.",
+        }, fieldKeys)
+
+        /* create service */
+        svc = idGeneraterService{}
+        svc = loggingMiddleware{svc}
+        svc = instrumentingMiddleware{requestCount, requestLatency, svc}
+
+        zipkinServer := zipkin.GRPCServerTrace(zipkinTracer)
+
+        options := []grpctransport.ServerOption{
+                grpctransport.ServerErrorLogger(*log.GetDefaultKitLogger()),
+                zipkinServer,
+        }
+
+        generateUniqueIdV1Handler := grpctransport.NewServer(
+                opentracing.TraceServer(tracer, "GenerateUniqueIdV1")(makeGenerateUniqueIdV1Endpoint(svc)),
+                decodeGenerateUniqueIdV1Request,
+                encodeGenerateUniqueIdV1Response,
+                append(options, grpctransport.ServerBefore(opentracing.GRPCToContext(tracer, "GenerateUniqueIdV1", *log.GetDefaultKitLogger())))...,
+        )
+        mtalkGenerateUniqueIdV1Handler := mkgrpcserver.NewGrpcMtalkServer(generateUniqueIdV1Handler, serviceName, "GenerateUniqueIdV1", monitorClient)
+
+        /* grpc server */
+        grpcSvr := &amp;grpcServer{
+                generateUniqueIdV1: mtalkGenerateUniqueIdV1Handler,
+        }
+        // The gRPC listener mounts the Go kit gRPC server we created.
+        grpcListener, err := net.Listen("tcp", grpcAddr)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Error("transport", "gRPC", "during", "Listen", "err", err)
+                os.Exit(1)
+        }</span>
+        <span class="cov0" title="0">log.Error("transport", "gRPC", "addr", grpcAddr)
+        baseServer := grpc.NewServer()
+        pb.RegisterIdGeneraterServer(baseServer, grpcSvr)
+        baseServer.Serve(grpcListener)</span>
+}
+
+type grpcServer struct {
+        generateUniqueIdV1 grpctransport.Handler
+}
+
+func (s *grpcServer) GenerateUniqueIdV1(ctx context.Context, req *pb.GenerateUniqueIdV1Request) (*pb.GenerateUniqueIdV1Reply, error) <span class="cov0" title="0">{
+        _, rep, err := s.generateUniqueIdV1.ServeGRPC(ctx, req)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+        <span class="cov0" title="0">return rep.(*pb.GenerateUniqueIdV1Reply), nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package main
+
+import (
+        "bytes"
+        "fmt"
+        "time"
+)
+
+// StringService provides operations on strings.
+type IdGeneraterService interface {
+        GenerateUniqueIdV1(uint32) ([]string, error)
+}
+
+type idGeneraterService struct{}
+
+func (service idGeneraterService) GenerateUniqueIdV1(count uint32) ([]string, error) <span class="cov8" title="1">{
+        log.Debug("method_start", "GenerateUniqueIdV1", "input", count)
+        if count &lt;= 0 </span><span class="cov8" title="1">{
+                return []string{}, nil
+        }</span>
+
+        //generate id
+        <span class="cov8" title="1">ids := []string{}
+        for </span><span class="cov8" title="1">{
+                id, err := generateUniqueId()
+                if err != nil </span><span class="cov0" title="0">{
+                        time.Sleep(500 * time.Millisecond)
+                        continue</span>
+                }
+                <span class="cov8" title="1">ids = append(ids, id)
+                if uint32(len(ids)) &gt;= count </span><span class="cov8" title="1">{
+                        break</span>
+                }
+        }
+
+        <span class="cov8" title="1">log.Debug("method_end", "GenerateUniqueIdV1", "status", "success", "return", ids)
+        return ids, nil</span>
+}
+
+func getIndexFromRedis() (string, error) <span class="cov8" title="1">{
+        log.Debug("method_start", "Incr MID")
+
+        incr, err := redisClient.Incr("idgen:idgen_idx")
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">if incr%300 == 0 </span><span class="cov0" title="0">{
+                redisClient.Del("idgen:idgen_idx")
+        }</span>
+
+        <span class="cov8" title="1">incrString := fmt.Sprint(incr)
+
+        incrString, err = addZeroForNum(incrString, 3)
+
+        log.Debug("method_end", "Incr", "status", "success")
+        return incrString, err</span>
+}
+
+func addZeroForNum(str string, strLength int) (string, error) <span class="cov8" title="1">{
+        log.Debug("method_start", "addZeroForNum")
+
+        var buffer bytes.Buffer
+        strLen := len(str)
+        for strLen &lt; strLength </span><span class="cov8" title="1">{
+                buffer.WriteString("0")
+                buffer.WriteString(str)
+                str = buffer.String()
+                strLen = len(str)
+        }</span>
+
+        <span class="cov8" title="1">log.Debug("method_end", "addZeroForNum", "status", "success")
+        return str, nil</span>
+}
+
+func generateUniqueId() (string, error) <span class="cov8" title="1">{
+        log.Debug("method_start", "batchIdCreate")
+
+        //从redis生成3位数
+        incr, err := getIndexFromRedis()
+        if incr == "" </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        //得到当前毫秒数
+        <span class="cov8" title="1">nowTime := fmt.Sprint(time.Now().Unix())
+
+        mid := nowTime + seqNo + incr
+
+        log.Debug("method_end", "batchIdCreate", "status", "success")
+        return mid, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package main
+
+import (
+        "time"
+        "context"
+        "idgen/pb"
+        monitor "monitor/client"
+        "github.com/go-kit/kit/endpoint"
+)
+
+func makeGenerateUniqueIdV1Endpoint(svc IdGeneraterService) endpoint.Endpoint <span class="cov0" title="0">{
+        return func(ctx context.Context, request interface{}) (interface{}, error) </span><span class="cov0" title="0">{
+                defer func() </span><span class="cov0" title="0">{
+                        if x := recover(); x != nil </span><span class="cov0" title="0">{
+                                log.Error("panic", "true")
+                                //monitor
+                                go func()</span><span class="cov0" title="0">{
+                                        req := &amp;monitor.MonitorRequest{
+                                                ServiceName: serviceName,
+                                                MethodName:  "GenerateUniqueIdV1",
+                                                Param:       "unknown",
+                                                ErrorMsg:    "panic occurr!",
+                                                ErrorTime:   time.Now().String(),
+                                        }
+                                        monitorClient.PushErrorLog(req)
+                                }</span>()
+                        }
+                }()
+
+                <span class="cov0" title="0">req := request.(GenerateUniqueIdV1Request)
+                ids, err := svc.GenerateUniqueIdV1(req.Count)
+                if err != nil </span><span class="cov0" title="0">{
+                        return GenerateUniqueIdV1Response{Err: err.Error(), Ids: []string{}}, nil
+                }</span>
+                <span class="cov0" title="0">return GenerateUniqueIdV1Response{Err: "", Ids: ids}, nil</span>
+        }
+}
+
+func decodeGenerateUniqueIdV1Request(_ context.Context, grpcReq interface{}) (interface{}, error) <span class="cov0" title="0">{
+        req := grpcReq.(*pb.GenerateUniqueIdV1Request)
+        return GenerateUniqueIdV1Request{Count: req.Count}, nil
+}</span>
+
+func encodeGenerateUniqueIdV1Response(_ context.Context, response interface{}) (interface{}, error) <span class="cov0" title="0">{
+        resp := response.(GenerateUniqueIdV1Response)
+        return &amp;pb.GenerateUniqueIdV1Reply{Err: resp.Err, Ids: resp.Ids}, nil
+}</span>
+
+type GenerateUniqueIdV1Request struct {
+        Count uint32
+}
+
+type GenerateUniqueIdV1Response struct {
+        Err string
+        Ids []string
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

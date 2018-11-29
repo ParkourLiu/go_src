@@ -1,0 +1,30 @@
+邮件内容模板
+模板编号，模板顺序编号，模板名称，TITLE，模板内容，参数数量
+
+检索编号中顺序编号最大的模板加载到本地缓存（1小时自动过期）
+
+记录邮件历史
+ID， FROM， TO， CC， 模板编号， 参数， 发送时间， 状态（成功，失败）
+
+如果发送失败，将失败数据发送到MQ中
+##############数据库邮件标题表sql语句##############
+
+CREATE TABLE `subjecttemplate` (
+  `TemplateId` varchar(255) NOT NULL COMMENT '邮件标题id',
+  `SubjectText` varchar(1000) NOT NULL COMMENT '邮件标题内容',
+  `Ad` varchar(2) NOT NULL COMMENT '0表示有效 ，1表示无效',
+  PRIMARY KEY (`TemplateId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+insert  into `subjecttemplate`(`TemplateId`,`SubjectText`,`Ad`) values ('1','报错了','0');
+
+CREATE DATABASE /*!32312 IF NOT EXISTS*/`mmtest` /*!40100 DEFAULT CHARACTER SET utf8 */;
+
+##############数据库邮件Body表(html)sql语句##############
+
+CREATE TABLE `bodytemplate` (
+  `TemplateId` varchar(255) NOT NULL COMMENT '模板id',
+  `Template` varchar(1000) NOT NULL COMMENT '模板（html）',
+  `Ad` varchar(2) NOT NULL COMMENT '0表示有效 ，1表示无效',
+  PRIMARY KEY (`TemplateId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+insert  into `bodytemplate`(`TemplateId`,`Template`,`Ad`) values ('1','<html><body><h3>text</h3></body></html>','0');

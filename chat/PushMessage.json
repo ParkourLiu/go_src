@@ -1,0 +1,2 @@
+
+{"platform":["ios","android"],"fromuserid": "fromuseId1","audience":{"is_to_all":true},"message": {"content": "{\"content\":\"1111\",\"extra\":\"aa\"}","objectName": "RC:TxtMsg"},"notification":{"alert":"this is a push","ios": {"alert": "iOS 通知显示内容","extras": {"id": "1","name": "2"}},"android": {"alert": "Android 通知显示内容","extras": {"id": "1","name": "2"}}}}

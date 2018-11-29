@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package pb;
+
+// ID generater
+service IdGenerater {
+  rpc GenerateUniqueIdV1 (GenerateUniqueIdV1Request) returns (GenerateUniqueIdV1Reply) {}
+}
+
+message GenerateUniqueIdV1Request {
+  uint32 count = 1;
+}
+
+message GenerateUniqueIdV1Reply {
+  string err = 1;
+  repeated string ids = 2;
+}

@@ -1,0 +1,68 @@
+运行前配置：
+
+mysql按照如下配置：
+mysql_username = root
+mysql_password = shQX,34537916Mm123
+mysql_ip = 192.168.10.163
+mysql_port = 3306
+mysql_database = user
+
+mm数据库创建users表
+
+CREATE TABLE `user` (
+  `userId` varchar(50) NOT NULL COMMENT 'userId',
+  `phoneNo` varchar(11) DEFAULT '' COMMENT '用户电话号码',
+  `password` varchar(20) DEFAULT '' COMMENT '密码',
+  `email` varchar(100) DEFAULT '' COMMENT '用户邮箱',
+  `trueName` varchar(20) DEFAULT '' COMMENT '真实姓名',
+  `nickName` varchar(20) DEFAULT '' COMMENT '昵称',
+  `birthDay` varchar(20) DEFAULT '' COMMENT '生日',
+  `chineseZodiac` char(1) DEFAULT '' COMMENT '生肖',
+  `sex` char(1) DEFAULT '' COMMENT '性别',
+  `homeAddress` varchar(60) DEFAULT '' COMMENT '家庭住址',
+  `imageName` varchar(50) DEFAULT '' COMMENT '头像',
+  `chatName` varchar(50) DEFAULT '',
+  `chatPwd` varchar(50) DEFAULT '',
+  `qrImageName` varchar(50) DEFAULT '' COMMENT '个人二维码',
+  `mtalkNo` varchar(50) NOT NULL COMMENT '钦家号',
+  `hometown` varchar(40) DEFAULT '' COMMENT '家乡',
+  `description` varchar(100) DEFAULT '' COMMENT '描述',
+  `platForm` char(1) DEFAULT '' COMMENT '0:普通H5;1:微信;2和其他值:APP平台',
+  `openId` varchar(60) DEFAULT '' COMMENT '微信openId',
+  `backgroundImg` varchar(200) DEFAULT NULL COMMENT '背景图片',
+  `Sina_uid` varchar(100) DEFAULT '' COMMENT '新浪微博uid',
+  `Sina_name` varchar(50) DEFAULT '' COMMENT '新浪微博昵称',
+  `Sina_iconurl` varchar(200) DEFAULT '' COMMENT '新浪微博头像',
+  `Sina_gender` varchar(5) DEFAULT '' COMMENT '新浪微博性别',
+  `Wechat_uid` varchar(100) DEFAULT '' COMMENT '微信uid',
+  `Wechat_name` varchar(50) DEFAULT '' COMMENT '微信昵称',
+  `Wechat_iconurl` varchar(200) DEFAULT '' COMMENT '微信头像',
+  `Wechat_gender` varchar(5) DEFAULT '' COMMENT '微信性别',
+  `QQ_uid` varchar(100) DEFAULT '' COMMENT 'QQuid',
+  `QQ_name` varchar(50) DEFAULT '' COMMENT 'QQ昵称',
+  `QQ_iconurl` varchar(200) DEFAULT '' COMMENT 'QQ头像',
+  `QQ_gender` varchar(5) DEFAULT '' COMMENT 'QQ性别',
+  `createTime` datetime NOT NULL COMMENT '创建时间',
+  `updateTime` datetime NOT NULL COMMENT '修改时间',
+  `ad` char(1) NOT NULL DEFAULT 'a',
+  PRIMARY KEY (`userId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+编译后执行user.exe
+
+RestClient访问：
+http://192.168.10.163:8888/AddUser
+{"userId": "11222233", "phoneNo": "11122223333"}
+确认数据是否插入成功。
+
+http://192.168.10.163:8888/UpdateUser
+{"userId": "11222233", "phoneNo": "333222111"}
+确认数据是否修改成功
+
+http://192.168.10.163:8888/SearchUser
+{"userId": "11222233"}
+确认数据是否查询成功
+
+http://192.168.10.163:8888/DeleteUser
+{"userId": "11222233"}
+确认数据是否删除成功

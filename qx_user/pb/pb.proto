@@ -1,0 +1,63 @@
+syntax = "proto3";
+package pb;
+
+service UserService {
+  rpc SearchUserById (UserRequest) returns (UserReply) {}
+  rpc SearchUsers (UserRequest) returns (UsersReply) {}
+  rpc AddUser (UserRequest) returns (UserReply) {}
+  rpc UpdateUser (UserRequest) returns (UserReply) {}
+}
+
+message UserRequest {
+    string UserId = 1;
+    string PhoneNo = 2;
+    string Password = 3;
+    string Email = 4;
+    string TrueName = 5;
+    string NickName = 6;
+    string BirthDay = 7;
+    string ChineseZodiac = 8;
+    string QrImageName = 9;
+    string Sex = 10;
+    string HomeAddress = 11;
+    string ImageName = 12;
+    string ChatName = 13;
+    string ChatPwd = 14;
+    string MtalkNo = 15;
+    string Hometown = 16;
+    string Description = 17;
+    string PlatForm = 18;
+    string UUID = 19;
+    string OpenId = 20;
+    string BackgroundImg = 21;
+    string Wechat_uid = 22;
+    string Wechat_name = 23;
+    string Wechat_iconurl = 24;
+    string Wechat_gender = 25;
+    string QQ_uid = 26;
+    string QQ_name = 27;
+    string QQ_iconurl = 28;
+    string QQ_gender = 29;
+    string IsWater = 30;
+	string volunteer=31;
+}
+
+
+
+message UserReply {
+    map<string, UserRequest> data = 1;
+    string code = 2;
+    string err = 3;
+}
+
+message Users {
+    repeated UserRequest users= 1;
+}
+
+message UsersReply {
+    map<string, Users> data = 1;
+    string code = 2;
+    string err = 3;
+}
+
+

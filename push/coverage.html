@@ -1,0 +1,803 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">push\getui.go (82.4%)</option>
+				
+				<option value="file1">push\logging.go (0.0%)</option>
+				
+				<option value="file2">push\main.go (24.4%)</option>
+				
+				<option value="file3">push\service.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// getui
+package main
+
+import (
+        "bytes"
+        "crypto/sha256"
+        "encoding/json"
+        "errors"
+        "fmt"
+        "io/ioutil"
+        "net/http"
+        "time"
+)
+
+const (
+        //个推demo测试工具配置参数
+        //        appid        string = "ChPdvWd91n5GCbbzP1YuP8"
+        //        appkey       string = "iCWqHYbMw18cYY5NluwWp2"
+        //        mastersecret string = "UxlvgvFh57AhhJehtHI0G7"
+        //        appsecret    string = "4SLMFG6GTM8IM8cldMI8e4"
+
+        //钦家测试app个推配置参数
+        appid        string = "XmsnHx8jwe6CvVKhnOzV22"
+        appkey       string = "pi1tFGmiQd77vb0rBc4DX4"
+        mastersecret string = "FbHuAZL8Iu8Krh9tw1Wvq6"
+        appsecret    string = "xHek8i1q2394ig3PYbWl3"
+
+        //钦家生产app个推配置参数
+        //        appid        string = "sV0NB8kGTx73YJokpdAyQA"
+        //        appkey       string = "V12CZrm7je6VI26xUMZyf3"
+        //        mastersecret string = "lpCswXNUUhAP61WpUGjuo4"
+        //        appsecret    string = "DTKvVhEek16KQdZc9kiez4"
+
+        authtoken_URL = "https://restapi.getui.com/v1/" + appid + "/auth_sign"
+        List_push_URL = "https://restapi.getui.com/v1/" + appid + "/push_single_batch"
+)
+
+//json转map
+func jsonMap(str string) (map[string]interface{}, error) <span class="cov8" title="1">{
+        var dat map[string]interface{}
+        if err := json.Unmarshal([]byte(str), &amp;dat); err == nil </span><span class="cov8" title="1">{
+                return dat, nil
+        }</span><span class="cov0" title="0"> else {
+                return make(map[string]interface{}), err
+        }</span>
+}
+
+//结构体转Json字符串
+func structJson(pa interface{}) (string, error) <span class="cov8" title="1">{
+        jsons, err := json.Marshal(pa) //转换成JSON返回的是byte[]
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">fmt.Println(string(jsons)) //byte[]转换成string 输出
+        return string(jsons), nil</span>
+}
+
+//sig需要的sha256算法
+func getSha256(s string) string <span class="cov8" title="1">{
+        h := sha256.New()
+        h.Write([]byte(s))
+        return fmt.Sprintf("%x", h.Sum(nil))
+}</span>
+
+//获取毫秒时间
+func nowTime() string <span class="cov8" title="1">{
+        return fmt.Sprint(time.Now().UnixNano() / 1000000)
+}</span>
+
+type authtokenStruct struct {
+        Sign      string `json:"sign"`
+        Timestamp string `json:"timestamp"`
+        Appkey    string `json:"appkey"`
+}
+
+//获取authtoken
+func authtoken() (string, error) <span class="cov8" title="1">{
+        timestamp := fmt.Sprint(nowTime())
+        sign := getSha256(appkey + timestamp + mastersecret)
+
+        url := authtoken_URL
+        //json序列化
+        po := authtokenStruct{
+                Sign:      sign,
+                Timestamp: timestamp,
+                Appkey:    appkey,
+        }
+        //结构体转Json字符串
+        post, err := structJson(po)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">fmt.Println(url, "post", post)
+
+        var jsonStr = []byte(post)
+        fmt.Println("jsonStr", jsonStr)
+        fmt.Println("new_str", bytes.NewBuffer(jsonStr))
+
+        req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">req.Header.Set("Content-Type", "application/json")
+
+        client := &amp;http.Client{}
+        resp, err := client.Do(req)
+        defer resp.Body.Close()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">fmt.Println("response Status:", resp.Status)
+        body, err := ioutil.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">str := string(body)
+        fmt.Println("response Body:", string(body))
+
+        //把返回回来的json，提取authtoken
+        authtokenMap, err := jsonMap(str)
+        fmt.Println("▼▼▼▼▼authtoken,authtokenMap:::::::::", authtokenMap)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">result := authtokenMap["result"].(string)
+
+        if result != "ok" </span><span class="cov0" title="0">{
+                //调用第三方发短信邮件等功能
+                mqMSM(result)
+                return "", errors.New("获取authtoken第三方返回异常")
+        }</span>
+        <span class="cov8" title="1">return authtokenMap["auth_token"].(string), nil</span>
+}
+
+type styleStruct struct {
+        Type  int    `json:"type"`
+        Text  string `json:"text"`
+        Title string `json:"title"`
+}
+
+type notificationStruct struct {
+        Style                styleStruct `json:"style"`
+        Transmission_type    bool        `json:"transmission_type"`
+        Transmission_content string      `json:"transmission_content"`
+}
+
+type messageStruct struct {
+        Appkey              string `json:"appkey"`
+        Is_offline          bool   `json:"is_offline"`
+        Offline_expire_time int64  `json:"offline_expire_time"`
+        Msgtype             string `json:"msgtype"`
+}
+
+type pushListStruct struct {
+        Message      messageStruct      `json:"message"`
+        Notification notificationStruct `json:"notification"`
+        Alias          string             `json:"alias"`
+        Requestid    string             `json:"requestid"`
+}
+
+func newAndroidParamJson(appkey string, text string, title string, alias string, requestid string) (string, error) <span class="cov8" title="1">{
+        style := styleStruct{
+                Type:  0,
+                Text:  text,
+                Title: title,
+        }
+        notification := notificationStruct{
+                Style:                style,
+                Transmission_type:    true,
+                Transmission_content: "透传内容",
+        }
+        message := messageStruct{
+                Appkey:              appkey,
+                Is_offline:          true,
+                Offline_expire_time: 10000000,
+                Msgtype:             "notification",
+        }
+        pushList := pushListStruct{
+                Message:      message,
+                Notification: notification,
+                Alias:          alias,
+                Requestid:    requestid,
+        }
+        return structJson(pushList)
+}</span>
+
+type iosPushList struct {
+        Message      messageStruct `json:"message"`
+        Transmission transmission  `json:"transmission"`
+        Push_info    push_info     `json:"push_info"`
+        Alias          string        `json:"alias"`
+        Requestid    string        `json:"requestid"`
+}
+
+type transmission struct {
+        Transmission_content string `json:"transmission_content"`
+}
+
+type push_info struct {
+        Aps aps `json:"aps"`
+}
+
+type aps struct {
+        Alert alert `json:"alert"`
+}
+
+type alert struct {
+        Title string `json:"title"`
+        Body  string `json:"body"`
+}
+
+func newIosParamJson(appkey string, text string, title string, alias string, requestid string) (string, error) <span class="cov8" title="1">{
+        alert := alert{
+                Title: title,
+                Body:  text,
+        }
+        aps := aps{
+                Alert: alert,
+        }
+        push_info := push_info{
+                Aps: aps,
+        }
+        transmission := transmission{
+                Transmission_content: "",
+        }
+        message := messageStruct{
+                Appkey:              appkey,
+                Is_offline:          true,
+                Offline_expire_time: 10000000,
+                Msgtype:             "transmission",
+        }
+        iosPushList := iosPushList{
+                Message:      message,
+                Transmission: transmission,
+                Push_info:    push_info,
+                Alias:          alias,
+                Requestid:    requestid,
+        }
+        return structJson(iosPushList)
+}</span>
+
+//个推，群推传入参数map{text,title,alias,terrace}
+func PushList(paramsStruct *pushInfoList) (string, error) <span class="cov8" title="1">{
+        params := paramsStruct.PushInfos
+        //遍历参数
+        param := ""
+        for i := 0; i &lt; len(params); i++ </span><span class="cov8" title="1">{
+                if params[i].Text != "" &amp;&amp; params[i].Title != "" &amp;&amp; params[i].Alias != "" </span><span class="cov8" title="1">{
+                        androidPost, err := newAndroidParamJson(appkey, params[i].Text, params[i].Title, params[i].Alias, nowTime())
+                        if err != nil </span><span class="cov0" title="0">{
+                                fmt.Println("newAndroidParamJson:", err)
+                                return "", err
+                        }</span>
+                        <span class="cov8" title="1">iosPost, err := newIosParamJson(appkey, params[i].Text, params[i].Title, params[i].Alias, nowTime())
+                        if err != nil </span><span class="cov0" title="0">{
+                                fmt.Println("newIosParamJson:", err)
+                                return "", err
+                        }</span>
+                        <span class="cov8" title="1">param += androidPost + "," + iosPost
+                        //param += "{\"message\":{\"appkey\":\"" + appkey + "\",\"is_offline\":true,\"offline_expire_time\":10000000,\"msgtype\":\"notification\"},\"notification\": {\"style\": {\"type\": 0,\"text\": \"" + params[i]["text"] + "\",\"title\": \"" + params[i]["title"] + "\"},\"transmission_type\": true,\"transmission_content\": \"透传内容\"}, \"alias\":\"" + params[i]["alias"] + "\",\"requestid\":\"" + nowTime() + "\"}"
+                        if i &lt; len(params)-1 </span><span class="cov0" title="0">{
+                                param += ","
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">url := List_push_URL
+
+        //json序列化
+        post := "{\"msg_list\":[" + param + "],\"need_detail\":true}"
+        fmt.Println(url, "post", post)
+
+        var jsonStr = []byte(post)
+        fmt.Println("LIST_push_jsonStr", jsonStr)
+        fmt.Println("LIST_push_new_str", bytes.NewBuffer(jsonStr))
+
+        req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Println("http.NewRequest:", err)
+                return "", err
+        }</span>
+        //添加请求头文件
+        <span class="cov8" title="1">authtoken, err := authtoken()
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Println("authtoken:", err)
+                return "", err
+        }</span>
+        <span class="cov8" title="1">req.Header.Set("Content-Type", "application/json")
+        headMap := req.Header
+        headMap["authtoken"] = append(headMap["authtoken"], authtoken)
+        //req.Header.Add("authtoken", authtoken)
+        fmt.Println("authtoken:", req)
+        client := &amp;http.Client{}
+        resp, err := client.Do(req)
+        defer resp.Body.Close()
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Println("client.Do:", err)
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">fmt.Println("response Status:", resp.Status)
+        body, err := ioutil.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                fmt.Println("ioutil.ReadAll:", err)
+                return "", err
+        }</span>
+        <span class="cov8" title="1">str := string(body)
+        fmt.Println("response Body:", string(body))
+
+        //把返回回来的json，提取authtoken
+        authtokenMap, err := jsonMap(str)
+        fmt.Println("▼▼▼▼▼推送,authtokenMap:::::::::", authtokenMap)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">result := authtokenMap["result"].(string)
+
+        if result != "ok" </span><span class="cov8" title="1">{
+                //调用第三方发短信邮件等功能
+                mqMSM(result)
+                return "", errors.New("推送消息第三方返回异常")
+        }</span>
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+//透传消息封装
+func OSPFJson(appkey string, text string, title string, alias string, requestid string) (string, error) <span class="cov8" title="1">{
+        alert := alert{
+                Title: title,
+                Body:  text,
+        }
+        aps := aps{
+                Alert: alert,
+        }
+        push_info := push_info{
+                Aps: aps,
+        }
+        transmission := transmission{
+                Transmission_content: text,
+        }
+        message := messageStruct{
+                Appkey:              appkey,
+                Is_offline:          true,
+                Offline_expire_time: 10000000,
+                Msgtype:             "transmission",
+        }
+        iosPushList := iosPushList{
+                Message:      message,
+                Transmission: transmission,
+                Push_info:    push_info,
+                Alias:          alias,
+                Requestid:    requestid,
+        }
+        return structJson(iosPushList)
+}</span>
+
+//透传消息传入参数map{text,title,alias,terrace}
+func OSPFList(paramsStruct *pushInfoList) (string, error) <span class="cov8" title="1">{
+        params := paramsStruct.PushInfos
+        //遍历参数
+        param := ""
+        for i := 0; i &lt; len(params); i++ </span><span class="cov8" title="1">{
+                if params[i].Text != "" &amp;&amp; params[i].Title != "" &amp;&amp; params[i].Alias != "" </span><span class="cov8" title="1">{
+
+                        OSPFPost, err := OSPFJson(appkey, params[i].Text, params[i].Title, params[i].Alias, nowTime())
+                        if err != nil </span><span class="cov0" title="0">{
+                                return "", err
+                        }</span>
+                        <span class="cov8" title="1">param += OSPFPost
+                        if i &lt; len(params)-1 </span><span class="cov0" title="0">{
+                                param += ","
+                        }</span>
+                }
+        }
+
+        <span class="cov8" title="1">url := List_push_URL
+
+        //json序列化
+        post := "{\"msg_list\":[" + param + "],\"need_detail\":true}"
+        fmt.Println(url, "post", post)
+
+        var jsonStr = []byte(post)
+        fmt.Println("LIST_push_jsonStr", jsonStr)
+        fmt.Println("LIST_push_new_str", bytes.NewBuffer(jsonStr))
+
+        req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonStr))
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        //添加请求头文件
+        <span class="cov8" title="1">authtoken, err := authtoken()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">req.Header.Set("Content-Type", "application/json")
+        headMap := req.Header
+        headMap["authtoken"] = append(headMap["authtoken"], authtoken)
+        //req.Header.Add("authtoken", authtoken)
+        fmt.Println("authtoken:", req)
+        client := &amp;http.Client{}
+        resp, err := client.Do(req)
+        defer resp.Body.Close()
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+
+        <span class="cov8" title="1">fmt.Println("response Status:", resp.Status)
+        body, err := ioutil.ReadAll(resp.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">str := string(body)
+        fmt.Println("response Body:", string(body))
+
+        //把返回回来的json，提取authtoken
+        authtokenMap, err := jsonMap(str)
+        fmt.Println("▼▼▼▼▼透传消息,authtokenMap:::::::::", authtokenMap)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", err
+        }</span>
+        <span class="cov8" title="1">result := authtokenMap["result"].(string)
+        fmt.Println("▼▼▼▼▼透传消息,authtokenMap:::::::::", result)
+        if result != "ok" </span><span class="cov8" title="1">{
+                //调用第三方发短信邮件等功能
+                mqMSM(result)
+                return "", errors.New("透传消息第三方返回异常")
+        }</span>
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+func mqMSM(msg string) <span class="cov8" title="1">{
+        fmt.Println("██████████调用了发短信方法")
+}</span>
+
+//func main() {
+//        //authtoken := authtoken()
+//        //fmt.Print(authtoken)
+//        list := []pushInfo{}
+//        //钦家测试app
+//        //        list = append(list, make(map[string]string))
+//        //        list[0]["text"] = "dedefe"
+//        //        list[0]["title"] = "fsdfsdfsdfds"
+//        //        list[0]["alias"] = "6685c1b99792c68fcef07029f3ded9c2"
+
+//        //        list = append(list, make(map[string]string))
+//        //        list[1]["text"] = "dedefe"
+//        //        list[1]["title"] = "fsdfsdfsdfds"
+//        //        list[1]["alias"] = "d2103a3c966dba701e988a857f712e89"
+
+//        //测试个推小工具
+//        //        list = append(list, make(map[string]string))
+//        //        list[0]["text"] = "qqqq"
+//        //        list[0]["title"] = "qqqqqqqqq"
+//        //        list[0]["alias"] = "6c0e14fc15f8077416ca2780ae5639b4"
+
+//        pushInfo := pushInfo{
+//                title: "测试标题",
+//                text:  "测试内容",
+//                alias:   "6685c1b99792c68fcef07029f3ded9c2",
+//        }
+//        list = append(list, pushInfo)
+//        pushInfoList := pushInfoList{
+//                pushInfos: list,
+//        }
+//        OSPFList(pushInfoList)
+//}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package main
+
+import (
+        "time"
+)
+
+type loggingMiddleware struct {
+        next PushService
+}
+
+func (mw loggingMiddleware) Push(pushInfoList *pushInfoList) (string, error) <span class="cov0" title="0">{
+        log.Info(
+                "check_log", "yes",
+                "method_start", "Push",
+        )
+        defer func(begin time.Time) </span><span class="cov0" title="0">{
+                log.Info(
+                        "check_log", "yes",
+                        "method_end", "Push",
+                        "status", "success",
+                        "took", time.Since(begin),
+                )
+        }</span>(time.Now())
+
+        <span class="cov0" title="0">msg, err := mw.next.Push(pushInfoList)
+        return msg, err</span>
+}
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package main
+
+import (
+        "encoding/json"
+        "flag"
+        "os"
+
+        "mtcomm/k8s"
+        logger "mtcomm/log"
+        csr "mtcomm/mq/consumer"
+
+        "github.com/bluele/gcache"
+        stdopentracing "github.com/opentracing/opentracing-go"
+        zipkin "github.com/openzipkin/zipkin-go-opentracing"
+        "github.com/streadway/amqp"
+        "github.com/tjz101/goprop"
+)
+
+var (
+        namespace   string
+        serviceName string
+        tracer      stdopentracing.Tracer
+        prop        *goprop.Prop
+        log         *logger.Logger
+        svc         PushService
+        k8sClient   k8s.K8sClient
+        cacheClient gcache.Cache
+)
+
+func init() <span class="cov8" title="1">{
+        /* init properties */
+        propFile := flag.String("prop", "prop.properties", "properties file")
+        flag.Parse()
+
+        prop = goprop.NewProp()
+        prop.Read(*propFile)
+
+        namespace = prop.Get("namespace")     //kubernetes namespace
+        serviceName = prop.Get("serviceName") //kubernetes service name
+
+        /* init log */
+        logger.SetDefaultLogLevel(logger.LevelDebug)
+        logger.With("serviceName", serviceName)
+        log = logger.GetDefaultLogger()
+
+        /* init k8s */
+        k8sClient = k8s.NewK8sClient()
+
+}</span>
+
+func main() <span class="cov0" title="0">{
+        // init
+        zipkinAddr := prop.Get("zipkinAddr")
+        listenPort := prop.Get("listenPort")
+
+        //        options := []httptransport.ServerOption{
+        //                httptransport.ServerErrorLogger(*logger.GetDefaultLogger().GetDefaultKitLogger()),
+        //        }
+
+        // init tracing domain.
+        </span><span class="cov0" title="0">{
+                if zipkinAddr != "" </span><span class="cov0" title="0">{
+                        log.Info("tracer", "Zipkin", "zipkinAddr", zipkinAddr)
+                        collector, err := zipkin.NewHTTPCollector(zipkinAddr, zipkin.HTTPBatchSize(1))
+                        if err != nil </span><span class="cov0" title="0">{
+                                log.Error("tracer", "Zipkin", "err", err)
+                                os.Exit(1)
+                        }</span>
+                        <span class="cov0" title="0">tracer, err = zipkin.NewTracer(
+                                zipkin.NewRecorder(collector, false, listenPort, serviceName),
+                        )
+                        if err != nil </span><span class="cov0" title="0">{
+                                log.Error("tracer", "Zipkin", "err", err)
+                                os.Exit(1)
+                        }</span>
+                }<span class="cov0" title="0"> else {
+                        log.Info("tracer", "none")
+                        tracer = stdopentracing.GlobalTracer() // no-op
+                }</span>
+        }
+
+        /* init id generater */
+
+        /* create service */
+        <span class="cov0" title="0">svc = pushService{}
+        svc = loggingMiddleware{svc}
+
+        callback := func(d *amqp.Delivery) error </span><span class="cov0" title="0">{
+                //service
+                param := &amp;pushInfoList{}
+                err := json.Unmarshal([]byte(d.Body), param)
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Debug("===错误param===============================", err)
+                        return err
+                }</span>
+                <span class="cov0" title="0">log.Debug("===正确param===============================", param)
+
+                _, err = svc.Push(param)
+                if err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+                <span class="cov0" title="0">return nil</span>
+        }
+
+        //create consumer
+        <span class="cov0" title="0">csr.CreateReceiver(prop.Get("mq_uri"), prop.Get("mq_exchange"), prop.Get("mq_queue"), prop.Get("mq_route"), callback)
+
+        done := make(chan struct{})
+        &lt;-done</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package main
+
+import (
+        "errors"
+        logger "mtcomm/log"
+        "strconv"
+)
+
+// StringService provides operations on strings.
+type PushService interface {
+        Push(pushInfoList *pushInfoList) (string, error)
+}
+
+type pushService struct{}
+
+type pushInfoList struct {
+        PushType  string     `json:"pushType"` //0代表通知消息，1代表透传消息
+        PushInfos []pushInfo `json:"pushInfos"`
+}
+
+type pushInfo struct {
+        Title string `json:"title"`
+        Text  string `json:"text"`
+        Alias   string `json:"alias"`
+}
+
+func (pushInfoList *pushInfoList) String() string <span class="cov8" title="1">{
+        str := "PushType:" + pushInfoList.PushType
+        list := pushInfoList.PushInfos
+        for i := 0; i &lt; len(list); i++ </span><span class="cov8" title="1">{
+                str += "title:" + strconv.Itoa(i) + ":" + list[i].Title + ",text" + strconv.Itoa(i) + ":" + list[i].Text + ",alias" + strconv.Itoa(i) + ":" + list[i].Alias
+        }</span>
+        <span class="cov8" title="1">return str</span>
+}
+
+func check(log *logger.Logger, pushInfoList *pushInfoList) error <span class="cov8" title="1">{
+        log.Debug("method_start", "check", "input", pushInfoList)
+        if pushInfoList.PushType != "0" &amp;&amp; pushInfoList.PushType != "1" </span><span class="cov8" title="1">{
+                msg := "Parameter Check Error"
+                log.Debug("method_end", "check", "status", "fail", "msg", msg)
+                return errors.New(msg)
+        }</span>
+        <span class="cov8" title="1">if len(pushInfoList.PushInfos) &lt; 1 </span><span class="cov8" title="1">{
+                msg := "Parameter Check Error"
+                log.Debug("method_end", "check", "status", "fail", "msg", msg)
+                return errors.New(msg)
+        }</span><span class="cov8" title="1"> else {
+                for i := 0; i &lt; len(pushInfoList.PushInfos); i++ </span><span class="cov8" title="1">{
+                        if pushInfoList.PushInfos[i].Text == "" || pushInfoList.PushInfos[i].Title == "" || pushInfoList.PushInfos[i].Alias == "" </span><span class="cov8" title="1">{
+                                msg := "Parameter Check Error"
+                                log.Debug("method_end", "check", "status", "fail", "msg", msg)
+                                return errors.New(msg)
+                        }</span>
+                }
+        }
+        <span class="cov8" title="1">log.Debug("method_end", "check", "status", "success")
+        return nil</span>
+}
+
+func (service pushService) Push(pushInfoList *pushInfoList) (string, error) <span class="cov8" title="1">{
+        log.Debug("method_start", "Push", "input", pushInfoList)
+
+        /* check */
+        err := check(log, pushInfoList)
+        if err != nil </span><span class="cov8" title="1">{
+                return "", err
+        }</span>
+
+        /* service */
+        <span class="cov8" title="1">msg := ""
+        if pushInfoList.PushType == "0" </span><span class="cov8" title="1">{ //通知消息
+                msg, err = PushList(pushInfoList)
+                if err != nil </span><span class="cov8" title="1">{
+                        return "", err
+                }</span>
+        }<span class="cov8" title="1"> else if pushInfoList.PushType == "1" </span><span class="cov8" title="1">{ //透传消息
+                msg, err = OSPFList(pushInfoList)
+                if err != nil </span><span class="cov8" title="1">{
+                        return "", err
+                }</span>
+        }
+        <span class="cov8" title="1">log.Debug("method_end", "Push", "status", "success")
+        log.Debug("svc返回值===============================", msg)
+        return msg, nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

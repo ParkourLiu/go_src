@@ -1,0 +1,49 @@
+pipeline {
+	agent any
+	options {
+        timeout(time: 1, unit: 'HOURS') 
+    }
+	environment {
+        APP = 'idgen'
+    }
+	
+	stages {
+		stage('build'){
+			steps{
+				sh "docker run --rm -v /home/go/src:/go/src -v ${JENKINS_HOME}/workspace/${env.JOB_NAME}:/go/src/${APP} -w /go/src/${APP} golang:latest go build"
+				sh "rm -rf /home/go/src/${env.JOB_NAME}"
+				sh "cp -R ${JENKINS_HOME}/workspace/${env.JOB_NAME} /home/go/src/"
+			}		
+		}
+		stage('package&push'){
+			steps{
+				script{
+					docker.withRegistry('https://reg.mm-mworld.com:10443', '81368929-3b1f-47b3-b183-d9aaae633ab7') {
+						def customImage = docker.build("reg.mm-mworld.com:10443/mtalk/${APP}:latest")
+						customImage.push()
+					}
+				}
+			}		
+		}
+		
+    }
+	post {
+        always {
+            echo 'One way or another, I have finished'
+            deleteDir() /* clean up our workspace */
+        }
+        success {
+            echo 'This will run only if successful'
+        }
+        failure {
+            echo 'This will run only if failed'
+        }
+        unstable {
+            echo 'This will run only if the run was marked as unstable'
+        }
+        changed {
+            echo 'This will run only if the state of the Pipeline has changed'
+            echo 'For example, if the Pipeline was previously failing but is now successful'
+        }
+    }
+}

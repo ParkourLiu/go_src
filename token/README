@@ -1,0 +1,27 @@
+运行前配置：
+
+mysql按照如下配置：
+mysql_username = root
+mysql_password = 123456
+mysql_ip = 127.0.0.1
+mysql_port = 3306
+mysql_database = mgo
+
+mgo数据库创建users表
+
+CREATE TABLE mgo.`user` (
+  `userId` varchar(50) NOT NULL,
+  `userName` varchar(45) NOT NULL,
+  `v2` int(5) DEFAULT NULL,
+  `v3` datetime DEFAULT NULL,
+  `v1` varchar(45) DEFAULT NULL,
+  PRIMARY KEY (`userId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+编译后执行user.exe
+
+RestClient访问：
+http://127.0.0.1:8888/getNewToken
+{"uuid": "2222", "token": ""}
+
+确认数据是否插入成功。
